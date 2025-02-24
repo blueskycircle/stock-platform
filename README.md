@@ -110,9 +110,14 @@ python cli.py fetch AAPL GOOGL
 ```
 
 3. Using SQL directly:
+
+First you will need to log in
+
 ```cmd
 mysql --user=your-user-name --password=your-password
 ``
+
+You can now run SQL commands
 
 ```sql
 SELECT * FROM modelling_platform.stock_prices WHERE symbol = 'AAPL' LIMIT 10;
