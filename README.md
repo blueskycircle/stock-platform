@@ -114,7 +114,7 @@ python cli.py fetch AAPL GOOGL
 First you will need to log in
 
 ```cmd
-mysql --user=your-user-name --password=your-password
+mysql --user=your_db_user --password=your_db_password
 ```
 
 You can now run SQL commands
