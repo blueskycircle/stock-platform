@@ -115,7 +115,7 @@ First you will need to log in
 
 ```cmd
 mysql --user=your-user-name --password=your-password
-``
+```
 
 You can now run SQL commands
 
