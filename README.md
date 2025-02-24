@@ -112,6 +112,9 @@ python cli.py fetch AAPL GOOGL
 3. Using SQL directly:
 ```cmd
 mysql --user=your-user-name --password=your-password
+``
+
+```sql
 SELECT * FROM modelling_platform.stock_prices WHERE symbol = 'AAPL' LIMIT 10;
 SELECT * FROM modelling_platform.stock_prices WHERE symbol = 'GOOGL' AND volume > 75000000;
 ```
