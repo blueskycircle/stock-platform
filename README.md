@@ -8,7 +8,7 @@ The data ingestion module provides functionality to fetch and store financial ma
 
 ![Data Ingestion Demo a](assets/data-ingestion-demo-a.gif)
 
-![Data Ingestion Demo b](assets/data-ingestion-demo.gif)
+![Data Ingestion Demo b](assets/data-ingestion-demo-b.gif)
 
 ### Prerequisites
 
