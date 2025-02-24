@@ -6,9 +6,13 @@
 
 The data ingestion module provides functionality to fetch and store financial market data from Alpha Vantage API into a MySQL database. It supports incremental updates and handles multiple stock symbols.
 
+![Data Ingestion Demo a](assets/data-ingestion-demo-a.gif)
+
+![Data Ingestion Demo b](assets/data-ingestion-demo-b.gif)
+
 ### Prerequisites
 
-- Python 3.8+
+- Python 3.11+
 - MySQL Server
 - Alpha Vantage API key
 
@@ -36,7 +40,7 @@ pip install -r requirements.txt
 
 1. Fetch data for one or more symbols:
 ```cmd
-python cli.py fetch AAPL MSFT GOOGL
+python cli.py fetch AAPL GOOGL
 ```
 
 2. View stored data for a symbol:
@@ -101,8 +105,8 @@ Date         Open      High      Low       Close     Volume
 
 3. Fetch multiple symbols:
 ```cmd
-python cli.py fetch AAPL MSFT GOOGL
-> Successfully processed data for symbols: AAPL, MSFT, GOOGL
+python cli.py fetch AAPL GOOGL
+> Successfully processed data for symbols: AAPL, GOOGL
 ```
 
 ### Error Handling
