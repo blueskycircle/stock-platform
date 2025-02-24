@@ -63,8 +63,8 @@ class TestAlphaVantageIngestion:
         # Verify timeout parameter was passed
         mock_requests.assert_called_once()
         _, kwargs = mock_requests.call_args
-        assert kwargs.get('timeout') == 10
-        
+        assert kwargs.get("timeout") == 10
+
         # Existing assertions
         assert isinstance(df, pd.DataFrame)
         assert len(df) == 2
@@ -88,7 +88,7 @@ class TestAlphaVantageIngestion:
         with pytest.raises(Exception, match="API Error"):
             ingestion.fetch_stock_data("AAPL")
 
-    def test_store_data_success(self): 
+    def test_store_data_success(self):
         """Test successful data storage"""
         data = {
             "date": [datetime(2024, 2, 24), datetime(2024, 2, 23)],
@@ -121,7 +121,7 @@ class TestAlphaVantageIngestion:
         # Set up database mocks
         mock_connection = Mock()
         mock_result = Mock()
-        mock_result.fetchone.return_value = [pd.Timestamp('2024-02-23')]
+        mock_result.fetchone.return_value = [pd.Timestamp("2024-02-23")]
         mock_connection.execute.return_value = mock_result
 
         # Create a context manager mock
@@ -129,14 +129,15 @@ class TestAlphaVantageIngestion:
         context_manager.__enter__ = Mock(return_value=mock_connection)
         context_manager.__exit__ = Mock(return_value=None)
 
-        with patch('pandas.DataFrame.to_sql'), \
-         patch('library.data_ingestion.create_engine') as mock_create_engine:
-        
+        with patch("pandas.DataFrame.to_sql"), patch(
+            "library.data_ingestion.create_engine"
+        ) as mock_create_engine:
+
             # Set up the engine mock with proper context manager
             mock_engine = Mock()
             mock_engine.connect.return_value = context_manager
             mock_create_engine.return_value = mock_engine
-            
+
             # Run the test
             ingestion = AlphaVantageIngestion()
             ingestion.update_stock_data(["AAPL", "GOOGL"])
@@ -152,15 +153,15 @@ class TestAlphaVantageIngestion:
 
             # Get the SQL queries and parameters from the execute calls
             execute_calls = mock_connection.execute.call_args_list
-            
+
             def get_sql_text(call):
                 arg = call[0][0]
-                if hasattr(arg, 'text'):
+                if hasattr(arg, "text"):
                     sql_text = str(arg.text)
                 else:
                     sql_text = str(arg)
-                return ' '.join(sql_text.split())  # Normalize whitespace
-            
+                return " ".join(sql_text.split())  # Normalize whitespace
+
             def get_params(call):
                 # Parameters are passed as keyword arguments in the second position
                 if len(call[0]) > 1:
@@ -169,33 +170,51 @@ class TestAlphaVantageIngestion:
                 elif len(call[1]):
                     return call[1]
                 return None
-            
+
             queries = [get_sql_text(call) for call in execute_calls]
             params = [get_params(call) for call in execute_calls]
 
             # Verify query types and counts
-            create_db_queries = [q for q in queries if 'CREATE DATABASE' in q.upper()]
-            create_table_queries = [q for q in queries if 'CREATE TABLE' in q.upper()]
-            select_queries = [q for q in queries if 'SELECT MAX' in q.upper() and 'date' in q.lower()]
+            create_db_queries = [q for q in queries if "CREATE DATABASE" in q.upper()]
+            create_table_queries = [q for q in queries if "CREATE TABLE" in q.upper()]
+            select_queries = [
+                q for q in queries if "SELECT MAX" in q.upper() and "date" in q.lower()
+            ]
 
-            assert len(create_db_queries) == 1, f"Expected 1 CREATE DATABASE query, got {len(create_db_queries)}"
-            assert len(create_table_queries) == 2, f"Expected 2 CREATE TABLE queries, got {len(create_table_queries)}"
-            assert len(select_queries) == 2, f"Expected 2 SELECT MAX(date) queries, got {len(select_queries)}"
+            assert (
+                len(create_db_queries) == 1
+            ), f"Expected 1 CREATE DATABASE query, got {len(create_db_queries)}"
+            assert (
+                len(create_table_queries) == 2
+            ), f"Expected 2 CREATE TABLE queries, got {len(create_table_queries)}"
+            assert (
+                len(select_queries) == 2
+            ), f"Expected 2 SELECT MAX(date) queries, got {len(select_queries)}"
 
             # Verify SELECT query parameters
-            select_params = [p for q, p in zip(queries, params) 
-                            if 'SELECT MAX' in q.upper() and p is not None]
+            select_params = [
+                p
+                for q, p in zip(queries, params)
+                if "SELECT MAX" in q.upper() and p is not None
+            ]
             assert len(select_params) == 2, "Expected 2 parameterized SELECT calls"
-            
-            symbols = {p['symbol'] for p in select_params}
-            assert symbols == {'AAPL', 'GOOGL'}, f"Expected symbols AAPL and GOOGL, got {symbols}"
+
+            symbols = {p["symbol"] for p in select_params}
+            assert symbols == {
+                "AAPL",
+                "GOOGL",
+            }, f"Expected symbols AAPL and GOOGL, got {symbols}"
 
             # Verify correct order of operations
-            assert 'CREATE DATABASE' in queries[0].upper(), "First query should be CREATE DATABASE"
-            assert all('SELECT MAX' in q.upper() for q in [queries[1], queries[3]]), \
-                "SELECT queries should be second and fourth"
-            assert all('CREATE TABLE' in q.upper() for q in [queries[2], queries[4]]), \
-                "CREATE TABLE queries should be third and fifth"
+            assert (
+                "CREATE DATABASE" in queries[0].upper()
+            ), "First query should be CREATE DATABASE"
+            assert all(
+                "SELECT MAX" in q.upper() for q in [queries[1], queries[3]]
+            ), "SELECT queries should be second and fourth"
+            assert all(
+                "CREATE TABLE" in q.upper() for q in [queries[2], queries[4]]
+            ), "CREATE TABLE queries should be third and fifth"
 
     @pytest.mark.parametrize(
         "invalid_data, expected_error",

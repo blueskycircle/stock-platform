@@ -52,9 +52,9 @@ class AlphaVantageIngestion:
                 "function": function,
                 "symbol": symbol,
                 "apikey": self.api_key,
-                "outputsize": "full"
+                "outputsize": "full",
             }
-            
+
             # Add timeout parameter to prevent hanging
             response = requests.get(self.base_url, params=params, timeout=10)
             response.raise_for_status()
@@ -125,9 +125,7 @@ class AlphaVantageIngestion:
             )
 
             logger.info(
-                "Successfully stored %d records for %s",
-                len(df),
-                df['symbol'].iloc[0]
+                "Successfully stored %d records for %s", len(df), df["symbol"].iloc[0]
             )
 
         except Exception as e:
@@ -147,15 +145,20 @@ class AlphaVantageIngestion:
                         f"SELECT MAX(date) as last_date FROM {table_name} WHERE symbol = :symbol"
                     )
                     with self.engine.connect() as connection:
-                        result = connection.execute(query, {"symbol": symbol}).fetchone()
+                        result = connection.execute(
+                            query, {"symbol": symbol}
+                        ).fetchone()
                     last_date = pd.Timestamp(result[0]) if result[0] else None
 
                     if last_date is not None:
                         # Filter only new data using pandas datetime
-                        df['date'] = pd.to_datetime(df['date'])
-                        df = df[df['date'] > last_date]
+                        df["date"] = pd.to_datetime(df["date"])
+                        df = df[df["date"] > last_date]
 
-                except (sqlalchemy.exc.ProgrammingError, sqlalchemy.exc.OperationalError) as db_error:
+                except (
+                    sqlalchemy.exc.ProgrammingError,
+                    sqlalchemy.exc.OperationalError,
+                ) as db_error:
                     logger.warning("Database error for %s: %s", symbol, str(db_error))
 
                 if not df.empty:

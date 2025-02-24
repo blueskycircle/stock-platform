@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 def cli():
     """Command line interface for stock data ingestion"""
 
+
 @cli.command()
 @click.argument("symbols", nargs=-1, required=True)
 @click.option(
