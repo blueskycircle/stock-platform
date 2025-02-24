@@ -134,6 +134,26 @@ class AlphaVantageIngestion:
 
     def update_stock_data(self, symbols, table_name="stock_prices"):
         """Update stock data for multiple symbols"""
+        # Create table first to avoid race conditions
+        create_table_query = text(
+            f"""
+            CREATE TABLE IF NOT EXISTS {table_name} (
+                date DATE NOT NULL,
+                open DECIMAL(10,2) NOT NULL,
+                high DECIMAL(10,2) NOT NULL,
+                low DECIMAL(10,2) NOT NULL,
+                close DECIMAL(10,2) NOT NULL,
+                volume BIGINT NOT NULL,
+                symbol VARCHAR(10) NOT NULL,
+                PRIMARY KEY (date, symbol)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            """
+        )
+        
+        with self.engine.connect() as connection:
+            connection.execute(create_table_query)
+            connection.commit()
+
         for symbol in symbols:
             try:
                 logger.info("Fetching data for %s", symbol)
@@ -155,11 +175,9 @@ class AlphaVantageIngestion:
                         df["date"] = pd.to_datetime(df["date"])
                         df = df[df["date"] > last_date]
 
-                except (
-                    sqlalchemy.exc.ProgrammingError,
-                    sqlalchemy.exc.OperationalError,
-                ) as db_error:
+                except sqlalchemy.exc.OperationalError as db_error:
                     logger.warning("Database error for %s: %s", symbol, str(db_error))
+                    continue
 
                 if not df.empty:
                     self.store_data(df, table_name)
