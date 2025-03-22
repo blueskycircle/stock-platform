@@ -65,7 +65,10 @@ class TestAlphaVantageIngestion:
         assert ingestion.base_url == "https://www.alphavantage.co/query"
 
     def test_fetch_stock_data_success(
-        self, mock_engine, mock_requests, sample_stock_data # pylint: disable=unused-argument
+        self,
+        mock_engine,
+        mock_requests,
+        sample_stock_data,  # pylint: disable=unused-argument
     ):
         """Test successful stock data fetching"""
         mock_response = Mock()
@@ -95,7 +98,7 @@ class TestAlphaVantageIngestion:
         assert df["symbol"].iloc[0] == "AAPL"
         assert isinstance(df["date"].iloc[0], datetime)
 
-    def test_fetch_stock_data_api_error(self, mock_requests):
+    def test_fetch_stock_data_api_error(self, mock_requests, mock_engine):
         """Test API error handling"""
         mock_requests.side_effect = Exception("API Error")
 
@@ -103,7 +106,7 @@ class TestAlphaVantageIngestion:
         with pytest.raises(Exception, match="API Error"):
             ingestion.fetch_stock_data("AAPL")
 
-    def test_store_data_success(self):
+    def test_store_data_success(self, mock_engine):
         """Test successful data storage"""
         data = {
             "date": [datetime(2024, 2, 24), datetime(2024, 2, 23)],
@@ -225,7 +228,7 @@ class TestAlphaVantageIngestion:
         ],
     )
     def test_fetch_stock_data_invalid_response(
-        self, mock_requests, invalid_data, expected_error
+        self, mock_requests, invalid_data, expected_error, mock_engine
     ):
         """Test handling of various invalid API responses"""
         mock_response = Mock()
