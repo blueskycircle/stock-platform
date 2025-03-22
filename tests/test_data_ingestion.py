@@ -65,7 +65,7 @@ class TestAlphaVantageIngestion:
         assert ingestion.base_url == "https://www.alphavantage.co/query"
 
     def test_fetch_stock_data_success(
-        self, mock_engine, mock_requests, sample_stock_data
+        self, mock_engine, mock_requests, sample_stock_data # pylint: disable=unused-argument
     ):
         """Test successful stock data fetching"""
         mock_response = Mock()
@@ -176,17 +176,7 @@ class TestAlphaVantageIngestion:
                     sql_text = str(arg)
                 return " ".join(sql_text.split())  # Normalize whitespace
 
-            def get_params(call):
-                # Parameters are passed as keyword arguments in the second position
-                if len(call[0]) > 1:
-                    return call[0][1]
-                # Or as a dictionary in the kwargs
-                elif len(call[1]):
-                    return call[1]
-                return None
-
             queries = [get_sql_text(call) for call in execute_calls]
-            params = [get_params(call) for call in execute_calls]
 
             # Verify query types and counts
             create_db_queries = [q for q in queries if "CREATE DATABASE" in q.upper()]
