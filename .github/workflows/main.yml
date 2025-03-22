@@ -3,10 +3,11 @@ name: Python application test with Github Actions
 on: [push]
 
 jobs:
-  build:
-
+  test:
     runs-on: ubuntu-latest
-
+    env:
+      DATABASE_URL: "mysql://fake:fake@localhost/fake_db"
+      ALPHAVANTAGE_API_KEY: "demo"
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python 3.13
