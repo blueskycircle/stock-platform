@@ -8,16 +8,15 @@ from cmdstanpy import CmdStanModel
 from datetime import datetime
 
 
-
 def create_arima_stan_code(p, d, q):
     """
     Generate Stan code for ARIMA(p,d,q) model with improved numerical stability
-    
+
     Args:
         p (int): AR order - number of autoregressive terms
         d (int): Differencing order
         q (int): MA order - number of moving average terms
-        
+
     Returns:
         str: Stan model code as a string
     """
@@ -25,7 +24,7 @@ def create_arima_stan_code(p, d, q):
     ar_terms = p  # Number of AR terms
     ma_terms = q  # Number of MA terms
     diff_order = d  # Differencing order
-    
+
     stan_code = """
     data {
         int<lower=1> N;  // number of observations
@@ -138,10 +137,10 @@ def create_arima_stan_code(p, d, q):
         }
     }
     """
-    
+
     # Print ARIMA model information
     print(f"Creating ARIMA({ar_terms},{diff_order},{ma_terms}) Stan model code")
-    
+
     return stan_code
 
 
@@ -189,27 +188,29 @@ def fit_arima_stan(data, p=1, d=1, q=1, forecast_horizon=30, n_samples=5000):
     user_home = os.path.expanduser("~")
     base_temp_dir = os.path.join(user_home, ".stan_temp")
     os.makedirs(base_temp_dir, exist_ok=True)
-    
+
     # Create unique subdirectory for this run
     import uuid
+
     run_id = str(uuid.uuid4())[:8]  # Use just first 8 chars for shorter path
     temp_dir = os.path.join(base_temp_dir, f"arima_{run_id}")
     os.makedirs(temp_dir, exist_ok=True)
-    
+
     model_path = os.path.join(temp_dir, "model.stan")
-    
+
     try:
         # Write Stan code to the temp directory
         stan_code = create_arima_stan_code(p, d, q)
         with open(model_path, "w", encoding="utf-8") as f:
             f.write(stan_code)
-        
+
         print(f"Stan model saved to {model_path}")
-        
+
         # Add a small delay to ensure file is written completely
         import time
+
         time.sleep(0.5)
-        
+
         try:
             # Compile Stan model with specific error handling
             model = CmdStanModel(stan_file=model_path)
@@ -219,27 +220,29 @@ def fit_arima_stan(data, p=1, d=1, q=1, forecast_horizon=30, n_samples=5000):
         except RuntimeError as e:
             print(f"Stan model compilation failed: {str(e)}")
             raise RuntimeError(f"Stan model compilation failed: {str(e)}") from e
-        
+
         # Prepare data for Stan
         stan_data = {
             "N": len(data_scaled),
             "y": data_scaled,
             "p": p,
             "q": q,
-            "h": forecast_horizon
+            "h": forecast_horizon,
         }
-        
+
         # Simple initialization
-        initialization = [{
-            "phi": np.zeros(p) if p > 0 else [],
-            "theta": np.zeros(q) if q > 0 else [],
-            "sigma": 0.5
-        }]
-        
+        initialization = [
+            {
+                "phi": np.zeros(p) if p > 0 else [],
+                "theta": np.zeros(q) if q > 0 else [],
+                "sigma": 0.5,
+            }
+        ]
+
         # Debug information
         print(f"Sampling with Stan model: ARIMA({p},{d},{q})")
         print(f"Data shape: {data_scaled.shape}, Output directory: {temp_dir}")
-        
+
         try:
             fit = model.sample(
                 data=stan_data,
@@ -247,26 +250,25 @@ def fit_arima_stan(data, p=1, d=1, q=1, forecast_horizon=30, n_samples=5000):
                 iter_warmup=1000,
                 chains=1,
                 show_progress=True,
-                adapt_delta=0.95, 
+                adapt_delta=0.95,
                 max_treedepth=10,
                 inits=initialization,
                 output_dir=temp_dir,
                 save_warmup=False,
                 seed=42,
             )
-            
+
             print("Stan sampling completed successfully")
-            
+
         except (ValueError, RuntimeError) as e:
             print(f"Stan sampling failed: {str(e)}")
-            
+
             # List directory contents for debugging
             print("\nDirectory contents:")
             for file in os.listdir(temp_dir):
                 print(f"- {file}")
-                
+
             raise RuntimeError(f"Stan sampling failed: {str(e)}") from e
-        
 
         try:
             # Extract forecasts
@@ -298,21 +300,25 @@ def fit_arima_stan(data, p=1, d=1, q=1, forecast_horizon=30, n_samples=5000):
 
         # Return results with model order and info
         return {
-            "mean": forecast_mean, 
-            "lower": forecast_lower, 
+            "mean": forecast_mean,
+            "lower": forecast_lower,
             "upper": forecast_upper,
             "order": (p, d, q),
-            "success": True
+            "success": True,
+            "fit": fit,
         }
 
     except Exception as e:  # pylint: disable=broad-except
         # For any unhandled exceptions, provide detailed error info
-        print(f"ARIMA({p},{d},{q}) modeling failed with error: {type(e).__name__}: {str(e)}")
+        print(
+            f"ARIMA({p},{d},{q}) modeling failed with error: {type(e).__name__}: {str(e)}"
+        )
         import traceback
+
         traceback.print_exc()
         # Re-raise the exception instead of falling back
         raise
-        
+
     finally:
         # Clean up the temporary directory
         try:
@@ -582,6 +588,7 @@ def save_forecast_to_db(
         # but disable the warning specifically for this line
         print(f"Unexpected error saving forecast to database: {str(e)}")
         import traceback
+
         traceback.print_exc()
 
 
@@ -721,6 +728,7 @@ def forecast_stock_price_arima(
             "forecast_mean": forecast_result["mean"],
             "forecast_lower": forecast_result["lower"],
             "forecast_upper": forecast_result["upper"],
+            "fit": forecast_result.get("fit"),
         }
 
     except ValueError as e:
@@ -728,34 +736,37 @@ def forecast_stock_price_arima(
         print(f"Data validation error: {str(e)}")
         print("Please check input parameters and data quality.")
         return None
-        
+
     except RuntimeError as e:
         # Handle Stan/ARIMA modeling errors
         print(f"ARIMA modeling error: {str(e)}")
         print("Try different model parameters (p,d,q) or adjust the date range.")
         return None
-        
+
     except sqlalchemy.exc.SQLAlchemyError as e:
         # Handle database errors
         print(f"Database error: {str(e)}")
         print("Check database connection and permissions.")
         return None
-        
+
     except (KeyError, IndexError) as e:
         # Handle data access errors
         print(f"Data access error: {str(e)}")
         print("Check data format and availability.")
         return None
-        
+
     except OSError as e:
         # Handle file system/IO errors
         print(f"System error: {str(e)}")
         return None
-        
+
     except Exception as e:  # pylint: disable=broad-except
         # Keep a safety net but disable the warning
-        print(f"Unexpected error in stock price forecasting: {type(e).__name__}: {str(e)}")
+        print(
+            f"Unexpected error in stock price forecasting: {type(e).__name__}: {str(e)}"
+        )
         import traceback
+
         traceback.print_exc()
         print("No forecast could be generated. Please try different parameters.")
         return None
@@ -887,27 +898,30 @@ def evaluate_arima_models(
         except ValueError as e:
             # Handle data validation errors
             print(f"Data validation error in ARIMA({p},{d},{q}): {str(e)}")
-            
+
         except RuntimeError as e:
             # Handle Stan/ARIMA modeling errors
             print(f"Runtime error in ARIMA({p},{d},{q}): {str(e)}")
-            
+
         except (FileNotFoundError, OSError) as e:
             # Handle file system errors
             print(f"File operation error in ARIMA({p},{d},{q}): {str(e)}")
-            
+
         except TypeError as e:
             # Handle type errors
             print(f"Type error in ARIMA({p},{d},{q}): {str(e)}")
-            
+
         except KeyError as e:
             # Handle key errors (e.g., missing forecast results)
             print(f"Key error in ARIMA({p},{d},{q}): {str(e)}")
-            
+
         except Exception as e:  # pylint: disable=broad-except
             # Keep a safety net but disable the warning
-            print(f"Unexpected error in ARIMA({p},{d},{q}): {type(e).__name__}: {str(e)}")
+            print(
+                f"Unexpected error in ARIMA({p},{d},{q}): {type(e).__name__}: {str(e)}"
+            )
             import traceback
+
             traceback.print_exc()
 
     if not results:
@@ -1009,7 +1023,7 @@ def evaluate_arima_models(
     plt.plot(train_data.index[-30:], train_data[-30:], "k-", label="Training Data")
     plt.plot(val_data.index, val_data, "b-", linewidth=2, label="Actual (Validation)")
 
-    colors = plt.cm.tab10(np.linspace(0, 1, len(results))) # pylint: disable=no-member
+    colors = plt.cm.tab10(np.linspace(0, 1, len(results)))  # pylint: disable=no-member
 
     for i, model in enumerate(results):
         p, d, q = model["order"]
@@ -1137,7 +1151,7 @@ def evaluate_arima_models(
         },
         "plot": fig,
         "metrics_plot": fig_metrics,
-        "forecast_comparison_plot": fig_forecast
+        "forecast_comparison_plot": fig_forecast,
     }
 
 
@@ -1166,3 +1180,216 @@ if __name__ == "__main__":
     )
 
     plt.show()
+
+
+def plot_parameter_traces(fit, model_type="stan", param_names=None, fig_title=None):
+    """
+    Generate trace plots and posterior distribution histograms for model parameters.
+
+    Args:
+        fit: Model fit object (CmdStanPy fit, etc.)
+        model_type: Type of model ('stan', etc.)
+        param_names: Specific parameters to plot (if None, will extract automatically)
+        fig_title: Custom title for the figure
+
+    Returns:
+        fig: Matplotlib figure object with trace plots and posterior distributions
+    """
+
+    # Extract parameters based on model type
+    all_samples = {}
+    param_info = {}
+
+    if model_type.lower() == "stan":
+        try:
+            # For ARIMA and other Stan models, extract core parameters
+            if param_names is None:
+                # Try common parameter names for time series models
+                param_bases = ["phi", "theta", "sigma", "beta", "alpha", "tau"]
+
+                # Try each parameter base name
+                for param_base in param_bases:
+                    try:
+                        # Get the parameter samples
+                        param_samples = fit.stan_variable(param_base)
+
+                        # Handle both scalar and vector parameters
+                        if len(param_samples.shape) == 1:  # Scalar (like sigma)
+                            all_samples[param_base] = param_samples
+
+                            # Special handling for common Greek letters
+                            if param_base == "sigma":
+                                param_info[param_base] = {"display_name": r"$\sigma$"}
+                            elif param_base == "alpha":
+                                param_info[param_base] = {"display_name": r"$\alpha$"}
+                            elif param_base == "beta":
+                                param_info[param_base] = {"display_name": r"$\beta$"}
+                            elif param_base == "tau":
+                                param_info[param_base] = {"display_name": r"$\tau$"}
+                            else:
+                                param_info[param_base] = {
+                                    "display_name": f"${param_base}$"
+                                }
+
+                        elif len(param_samples.shape) == 2:  # Vector (like phi, theta)
+                            # Extract each element as a separate parameter
+                            for i in range(param_samples.shape[1]):
+                                param_name = f"{param_base}[{i+1}]"
+                                all_samples[param_name] = param_samples[:, i]
+
+                                # Create nice LaTeX display names
+                                if param_base == "phi":
+                                    display_name = f"$\\phi_{{{i+1}}}$"
+                                elif param_base == "theta":
+                                    display_name = f"$\\theta_{{{i+1}}}$"
+                                else:
+                                    display_name = f"${param_base}_{{{i+1}}}$"
+
+                                param_info[param_name] = {"display_name": display_name}
+                    except (KeyError, AttributeError) as e:
+                        # Parameter doesn't exist in the model
+                        print(f"Could not find parameter {param_base}: {str(e)}")
+                    except ValueError:
+                        # Issues with data types or shapes
+                        pass
+                    except RuntimeError:
+                        # Stan backend issues
+                        pass
+            else:
+                # User specified parameter names
+                for param in param_names:
+                    try:
+                        samples = fit.stan_variable(param)
+                        all_samples[param] = samples.flatten()
+                        param_info[param] = {"display_name": f"${param}$"}
+                    except (AttributeError, KeyError) as e:
+                        # Parameter doesn't exist or fit has no stan_variable method
+                        print(f"Could not find parameter {param}: {str(e)}")
+                    except ValueError as e:
+                        # Value-related errors
+                        print(f"Value error extracting {param}: {str(e)}")
+                    except RuntimeError as e:
+                        # Stan runtime errors
+                        print(f"Runtime error extracting {param}: {str(e)}")
+                    except (TypeError, IndexError) as e:
+                        # Type errors or indexing errors
+                        print(f"Type/Index error extracting {param}: {str(e)}")
+
+        except (AttributeError, KeyError) as e:
+            # AttributeError: if fit doesn't have expected methods
+            # KeyError: when a parameter doesn't exist
+            print(f"Error accessing Stan parameters: {str(e)}")
+        except ValueError as e:
+            # ValueError: for issues with parameter values
+            print(f"Error with Stan parameter values: {str(e)}")
+        except TypeError as e:
+            # TypeError: for type-related issues
+            print(f"Type error with Stan parameters: {str(e)}")
+        except RuntimeError as e:
+            # RuntimeError: for Stan execution errors
+            print(f"Stan runtime error: {str(e)}")
+
+    else:
+        print(f"Unsupported model type: {model_type}")
+        return None
+
+    # Check if we found any parameters
+    if not all_samples:
+        print("No valid parameters found to plot")
+        return None
+
+    # Create plots
+    n_params = len(all_samples)
+    fig, axes = plt.subplots(n_params, 2, figsize=(14, 3.5 * n_params))
+
+    # Handle case with only one parameter
+    if n_params == 1:
+        axes = np.array([axes]).reshape(1, 2)
+
+    # Get sorted parameter names for consistent ordering
+    sorted_params = sorted(all_samples.keys())
+
+    # Create trace and density plots
+    for i, param in enumerate(sorted_params):
+        samples = all_samples[param]
+        display_name = param_info[param]["display_name"]
+
+        # Calculate summary statistics
+        mean_val = np.mean(samples)
+        median_val = np.median(samples)
+        std_val = np.std(samples)
+        q025 = np.percentile(samples, 2.5)
+        q975 = np.percentile(samples, 97.5)
+
+        # Calculate convergence metrics
+        n_half = len(samples) // 2
+        if n_half > 1:
+            # Rough estimate of Rhat (ratio of variances)
+            first_half = samples[:n_half]
+            second_half = samples[n_half:]
+            rhat_est = np.sqrt(np.var(second_half) / np.var(first_half))
+
+            # Autocorrelation at lag 1
+            autocorr = np.corrcoef(samples[:-1], samples[1:])[0, 1]
+        else:
+            rhat_est = np.nan
+            autocorr = np.nan
+
+        # Trace plot (left column)
+        axes[i, 0].plot(samples, alpha=0.7)
+        axes[i, 0].set_title(f"Trace Plot: {display_name}")
+        axes[i, 0].set_xlabel("Iteration")
+        axes[i, 0].set_ylabel("Value")
+        axes[i, 0].grid(True, alpha=0.3)
+
+        # Add convergence info
+        axes[i, 0].text(
+            0.02,
+            0.02,
+            f"Autocorr: {autocorr:.3f}\nRough Rhat: {rhat_est:.3f}",
+            transform=axes[i, 0].transAxes,
+            va="bottom",
+            ha="left",
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.7),
+        )
+
+        # Density plot (right column)
+        axes[i, 1].hist(samples, bins=30, density=True, alpha=0.7)
+        axes[i, 1].set_title(f"Posterior Distribution: {display_name}")
+        axes[i, 1].set_xlabel("Value")
+        axes[i, 1].set_ylabel("Density")
+
+        # Add mean, median and credible interval lines
+        axes[i, 1].axvline(
+            mean_val, color="red", linestyle="-", label=f"Mean: {mean_val:.3f}"
+        )
+        axes[i, 1].axvline(
+            median_val, color="green", linestyle=":", label=f"Median: {median_val:.3f}"
+        )
+        axes[i, 1].axvline(
+            q025, color="blue", linestyle="--", label=f"2.5%: {q025:.3f}"
+        )
+        axes[i, 1].axvline(
+            q975, color="blue", linestyle="--", label=f"97.5%: {q975:.3f}"
+        )
+
+        # Add standard deviation text
+        axes[i, 1].text(
+            0.05,
+            0.95,
+            f"Std: {std_val:.3f}",
+            transform=axes[i, 1].transAxes,
+            verticalalignment="top",
+            bbox=dict(boxstyle="round", alpha=0.1),
+        )
+
+        axes[i, 1].legend()
+
+    # Set figure title
+    if fig_title:
+        plt.suptitle(fig_title, fontsize=16)
+    else:
+        plt.suptitle("Parameter Posterior Distributions", fontsize=16)
+
+    plt.tight_layout(rect=[0, 0, 1, 0.97])
+    return fig
