@@ -346,5 +346,260 @@ def ensure_extension(filepath, extension):
     return filepath
 
 
+@cli.command()
+@click.argument("symbol")
+@click.option("--start-date", "-s", help="Start date in YYYY-MM-DD format")
+@click.option("--end-date", "-e", help="End date in YYYY-MM-DD format")
+@click.option("--p", "-p", type=int, default=1, help="AR order parameter")
+@click.option("--d", "-d", type=int, default=0, help="Differencing order parameter")
+@click.option("--q", "-q", type=int, default=0, help="MA order parameter")
+@click.option(
+    "--forecast-days", "-f", type=int, default=30, help="Number of days to forecast"
+)
+@click.option(
+    "--samples", "-n", type=int, default=1000, help="Number of MCMC samples for Stan"
+)
+@click.option(
+    "--output",
+    "-o",
+    default="arima_forecast.png",
+    help="Output file path for forecast chart",
+)
+@click.option("--save-params", "-sp", is_flag=True, help="Save parameter trace plots")
+@click.option(
+    "--params-output",
+    "-po",
+    default="arima_params.png",
+    help="Output file path for parameter plots",
+)
+@click.option(
+    "--save-results", "-sr", is_flag=True, help="Save forecast results to database"
+)
+@click.option(
+    "--evaluate/--no-evaluate", default=False, help="Evaluate multiple ARIMA models"
+)
+def forecast_arima(
+    symbol,
+    start_date,
+    end_date,
+    p,
+    d,
+    q,
+    forecast_days,
+    samples,
+    output,
+    save_params,
+    params_output,
+    save_results,
+    evaluate,
+):
+    """
+    Run ARIMA forecast on a stock and save results.
+
+    Usage examples:
+    - Basic forecast: python cli.py forecast-arima AAPL -p 1 -d 0 -q 0 -f 30
+    - Evaluate models: python cli.py forecast-arima GOOG --evaluate -s 2023-01-01
+
+    The forecast will be saved as a PNG chart and optionally parameter traces can be saved.
+    """
+    try:
+        from library.forecasting import (
+            forecast_stock_price_arima,
+            evaluate_arima_models,
+            plot_parameter_traces,
+        )
+        import matplotlib.pyplot as plt
+        from datetime import datetime, timedelta
+
+        analyzer = StockAnalysis()
+        output_path = ensure_extension(output, ".png")
+
+        # Initialize database connection for the forecasting function
+        db_connection = analyzer.engine
+
+        # Set default date ranges if not provided
+        today = datetime.now().strftime("%Y-%m-%d")
+        if end_date is None:
+            end_date = today
+
+        if start_date is None:
+            # Default to 2 years of historical data if not specified
+            start_date = (datetime.now() - timedelta(days=730)).strftime("%Y-%m-%d")
+
+        click.echo(
+            f"Generating ARIMA forecast for {symbol} (from {start_date} to {end_date})..."
+        )
+
+        if evaluate:
+            # Run model evaluation for multiple ARIMA configurations
+            click.echo("Evaluating multiple ARIMA models...")
+
+            # Define models to evaluate
+            models = [(1, 0, 0), (1, 0, 1)]
+
+            try:
+                results = evaluate_arima_models(
+                    symbol=symbol,
+                    start_date=start_date,
+                    end_date=end_date,
+                    holdout_days=forecast_days,
+                    models=models,
+                    db_connection=db_connection,
+                    n_samples=samples,
+                )
+
+                # Get best model
+                best_model = results["best_model"]
+                best_p, best_d, best_q = results["best_order"]
+
+                click.echo(f"Best model: ARIMA({best_p},{best_d},{best_q})")
+                click.echo(f"RMSE: {best_model['rmse']:.4f}")
+
+                # Save the forecast plot
+                fig = plt.figure(figsize=(12, 6))
+
+                # Get the forecast results from the best model
+                forecast_results = best_model["forecast"]
+
+                # Plot historical and forecast data
+                plt.plot(
+                    forecast_results.get("historical_dates", [])[-60:],
+                    forecast_results.get("historical_prices", [])[-60:],
+                    "b-",
+                    label="Historical",
+                )
+                plt.plot(
+                    forecast_results.get("forecast_dates", []),
+                    forecast_results["forecast_mean"],
+                    "r-",
+                    label=f"ARIMA({best_p},{best_d},{best_q}) Forecast",
+                )
+                plt.fill_between(
+                    forecast_results.get("forecast_dates", []),
+                    forecast_results["forecast_lower"],
+                    forecast_results["forecast_upper"],
+                    color="red",
+                    alpha=0.2,
+                    label="95% Interval",
+                )
+
+                plt.title(
+                    f"{symbol} Stock Price Forecast - Best Model: ARIMA({best_p},{best_d},{best_q})"
+                )
+                plt.legend()
+                plt.grid(True, alpha=0.3)
+                plt.xticks(rotation=45)
+                plt.tight_layout()
+                plt.savefig(output_path)
+                plt.close()
+
+                click.echo(f"Forecast chart saved to: {output_path}")
+
+                # Save parameter plots if requested
+                if save_params and "fit" in forecast_results:
+                    params_path = ensure_extension(params_output, ".png")
+
+                    # Generate parameter plots
+                    fig = plot_parameter_traces(
+                        fit=forecast_results["fit"],
+                        model_type="stan",
+                        fig_title=f"ARIMA({best_p},{best_d},{best_q}) Parameters for {symbol}",
+                    )
+
+                    if fig:
+                        fig.savefig(params_path)
+                        plt.close(fig)
+                        click.echo(f"Parameter plots saved to: {params_path}")
+                    else:
+                        click.echo(
+                            "Could not generate parameter plots (no valid parameters found)"
+                        )
+
+            except ValueError as e:
+                if "No data found" in str(e):
+                    click.echo(f"Error: {str(e)}")
+                    click.echo("Please fetch the data first using:")
+                    click.echo(f"python cli.py fetch {symbol}")
+                    return
+                raise
+
+        else:
+            # Run single ARIMA model with specified parameters
+            click.echo(f"Running ARIMA({p},{d},{q}) model...")
+
+            try:
+                # Get the forecast
+                result = forecast_stock_price_arima(
+                    symbol=symbol,
+                    start_date=start_date,
+                    end_date=end_date,
+                    p=p,
+                    d=d,
+                    q=q,
+                    forecast_days=forecast_days,
+                    db_connection=db_connection,
+                    save_to_db=save_results,
+                    n_samples=samples,
+                )
+
+                # Save the forecast plot (it's already generated in the function)
+                plt.savefig(output_path)
+                plt.close()
+
+                click.echo(f"Forecast chart saved to: {output_path}")
+
+                # Save parameter plots if requested
+                if save_params and "fit" in result:
+                    params_path = ensure_extension(params_output, ".png")
+
+                    # Generate parameter plots
+                    fig = plot_parameter_traces(
+                        fit=result["fit"],
+                        model_type="stan",
+                        fig_title=f"ARIMA({p},{d},{q}) Parameters for {symbol}",
+                    )
+
+                    if fig:
+                        fig.savefig(params_path)
+                        plt.close(fig)
+                        click.echo(f"Parameter plots saved to: {params_path}")
+                    else:
+                        click.echo(
+                            "Could not generate parameter plots (no valid parameters found)"
+                        )
+
+                # Print forecast summary
+                forecast_mean = result.get("forecast_mean", [])
+                if len(forecast_mean) > 0:
+                    last_price = result.get("historical_prices", [])[-1]
+                    forecast_end = forecast_mean[-1]
+                    pct_change = ((forecast_end / last_price) - 1) * 100
+                    direction = "up" if pct_change > 0 else "down"
+
+                    click.echo(f"\nForecast Summary for {symbol}:")
+                    click.echo(f"Current price: ${last_price:.2f}")
+                    click.echo(
+                        f"Forecast ({forecast_days} days): ${forecast_end:.2f} ({direction} {abs(pct_change):.2f}%)"
+                    )
+                    click.echo(
+                        f"95% CI: [${result['forecast_lower'][-1]:.2f}, ${result['forecast_upper'][-1]:.2f}]"
+                    )
+
+                    if save_results:
+                        click.echo("Forecast results saved to database")
+
+            except ValueError as e:
+                if "No data found" in str(e):
+                    click.echo(f"Error: {str(e)}")
+                    click.echo("Please fetch the data first using:")
+                    click.echo(f"python cli.py fetch {symbol}")
+                    return
+                raise
+
+    except Exception as e:
+        click.echo(f"Error: {str(e)}", err=True)
+        raise click.Abort()
+
+
 if __name__ == "__main__":
     cli()

@@ -24,6 +24,18 @@ The stock-platform project is a Python-based application designed for fetching, 
   - [Price History Chart](#price-history-chart)
   - [Performance Dashboard](#performance-dashboard)
   - [Returns Analysis](#returns-analysis)
+- [Forecasting](#forecasting)
+  - [Single Model Forecasting](#single-model-forecasting)
+  - [Model Evaluation](#model-evaluation)
+  - [Examples](#examples)
+    - [Basic ARIMA Forecast with Default Settings](#1-basic-arima-forecast-with-default-settings)
+    - [Specify Different ARIMA Model Parameters](#2-specify-different-arima-model-parameters)
+    - [Custom Date Range](#3-custom-date-range)
+    - [Increase Forecast Period and Sample Size](#4-increase-forecast-period-and-sample-size)
+    - [Save Parameter Trace Plots](#5-save-parameter-trace-plots)
+    - [Evaluate Multiple ARIMA Models](#6-evaluate-multiple-arima-models)
+    - [Complete Example with Custom Naming](#7-complete-example-with-custom-naming)
+    - [Model Selection with Custom Settings](#8-model-selection-with-custom-settings)
 
 ## Data Ingestion
 
@@ -237,3 +249,138 @@ Example:
 ```cmd
 python cli.py returns GOOG -s 2023-01-01 -p daily -o .output/google_returns.png
 ```
+
+## Forecasting
+
+The forecasting module provides tools for predicting future stock prices using ARIMA models. The `forecast-arima` command offers both single-model forecasting and model evaluation capabilities.
+
+```cmd
+python cli.py forecast-arima SYMBOL [OPTIONS]
+```
+
+### Arguments
+
+-   `SYMBOL`: The stock symbol to forecast (e.g., AAPL, GOOG).
+
+### Options
+
+-   `-s, --start-date`: Start date for historical data in YYYY-MM-DD format (default: 2 years ago).
+-   `-e, --end-date`: End date for historical data in YYYY-MM-DD format (default: today).
+-   `-p`: AR order parameter (default: 1).
+-   `-d`: Differencing order parameter (default: 0).
+-   `-q`: MA order parameter (default: 0).
+-   `-f, --forecast-days`: Number of days to forecast (default: 30).
+-   `-n, --samples`: Number of MCMC samples for Stan (default: 1000).
+-   `-o, --output`: Output file path for the forecast chart (default: "arima_forecast.png").
+-   `--save-params`: Flag to save parameter trace plots.
+-   `-po, --params-output`: Output file path for parameter plots (default: "arima_params.png").
+-   `--save-results`: Flag to save forecast results to the database.
+-   `--evaluate / --no-evaluate`: Evaluate multiple ARIMA models to find the best fit (default: False).
+
+### Detailed Explanation
+
+The `forecast-arima` command allows you to generate stock price forecasts using ARIMA (Autoregressive Integrated Moving Average) models. You can either specify the ARIMA parameters directly or use the `--evaluate` option to have the system test multiple models and select the best one.
+
+#### Single Model Forecasting
+
+When you specify the ARIMA parameters (`-p`, `-d`, `-q`), the command fits a single ARIMA model to the historical data and generates a forecast.
+
+#### Model Evaluation
+
+When you use the `--evaluate` option, the command tests a predefined set of ARIMA models, selects the best one based on a performance metric (e.g., RMSE), and generates a forecast using the best model.
+
+### Examples
+
+#### 1. Basic ARIMA Forecast with Default Settings
+
+```cmd
+python cli.py forecast-arima AAPL
+```
+
+This command runs an ARIMA(1,0,0) model on Apple stock with:
+
+*   Default 2 years of historical data
+*   30-day forecast
+*   1000 MCMC samples
+*   Saves the forecast chart as "arima_forecast.png"
+
+#### 2. Specify Different ARIMA Model Parameters
+
+```cmd
+python cli.py forecast-arima MSFT -p 2 -d 1 -q 1
+```
+
+This command runs an ARIMA(2,1,1) model on Microsoft stock, which:
+
+*   Uses 2 AR terms
+*   First-differences the data
+*   Includes 1 MA term
+
+#### 3. Custom Date Range
+
+```cmd
+python cli.py forecast-arima TSLA -s 2022-01-01 -e 2023-12-31
+```
+
+This command forecasts Tesla stock using:
+
+*   Historical data from Jan 1, 2022, to Dec 31, 2023
+*   Default ARIMA(1,0,0) parameters
+
+#### 4. Increase Forecast Period and Sample Size
+
+```cmd
+python cli.py forecast-arima GOOGL -f 60 -n 2000
+```
+
+This command runs a forecast for Google with:
+
+*   60-day forecast horizon (instead of the default 30)
+*   2000 MCMC samples for more precise posterior estimates
+
+#### 5. Save Parameter Trace Plots
+
+```cmd
+python cli.py forecast-arima AMZN --save-params -po amazon_params.png
+```
+
+This command saves:
+
+*   Standard forecast chart as "arima_forecast.png"
+*   Parameter trace plots as "amazon_params.png"
+
+#### 6. Evaluate Multiple ARIMA Models
+
+```cmd
+python cli.py forecast-arima NFLX --evaluate
+```
+
+This command:
+
+*   Tests multiple ARIMA configurations
+*   Selects the best model based on error metrics
+*   Generates forecast using the winning model
+
+#### 7. Complete Example with Custom Naming
+
+```cmd
+python cli.py forecast-arima AAPL -p 1 -d 0 -q 1 -s 2023-01-01 -e 2024-03-01 -f 45 -n 2000 -o .output/appl_forecast.png --save-params -po .output/appl_params.png --save-results
+```
+
+This comprehensive example:
+
+*   Uses an ARIMA(1,0,1) model on Apple stock
+*   Starts with data from Jan 1, 2023
+*   Forecasts 45 days ahead
+*   Uses 2000 MCMC samples
+*   Saves forecast chart as ".output/appl_forecast.png"
+*   Saves parameter plots as ".output/appl_params.png"
+*   Stores forecast results in the database
+
+#### 8. Model Selection with Custom Settings
+
+```cmd
+python cli.py forecast-arima NVDA --evaluate -s 2023-06-01 -o nvidia_best_model.png
+```
+
+This command evaluates models on more recent data and saves the best model forecast.

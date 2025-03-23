@@ -603,6 +603,7 @@ def forecast_stock_price_arima(
     price_column="close",
     db_connection=None,
     save_to_db=False,
+    n_samples=5000,
 ):
     """
     Forecast stock prices using ARIMA model
@@ -618,6 +619,7 @@ def forecast_stock_price_arima(
         price_column (str): Column name for price data
         db_connection: SQLAlchemy database connection
         save_to_db (bool): Whether to save forecasts to database
+        n_samples (int): Number of MCMC samples for Stan
 
     Returns:
         dict: Forecast results including dates, actual prices, forecasts, and confidence intervals
@@ -665,7 +667,12 @@ def forecast_stock_price_arima(
     try:
         # Fit model and generate forecasts
         forecast_result = fit_arima_stan(
-            price_series.values, p=p, d=d, q=q, forecast_horizon=forecast_days
+            price_series.values,
+            p=p,
+            d=d,
+            q=q,
+            forecast_horizon=forecast_days,
+            n_samples=n_samples,
         )
 
         # Combine actual and forecasted prices for plotting
@@ -780,6 +787,7 @@ def evaluate_arima_models(
     models=None,
     db_connection=None,
     price_column="close",
+    n_samples=5000,
 ):
     """
     Evaluate multiple ARIMA models and select the best one
@@ -792,6 +800,7 @@ def evaluate_arima_models(
         models (list): List of (p,d,q) tuples to try
         db_connection: SQLAlchemy database connection
         price_column (str): Column name for price data
+        num_samples (int): Number of MCMC samples for Stan
 
     Returns:
         dict: Evaluation results and best model
@@ -861,7 +870,12 @@ def evaluate_arima_models(
         try:
             # Fit model on training data
             forecast = fit_arima_stan(
-                train_data, p=p, d=d, q=q, forecast_horizon=holdout_days
+                train_data,
+                p=p,
+                d=d,
+                q=q,
+                forecast_horizon=holdout_days,
+                n_samples=n_samples,
             )
 
             # Calculate metrics
@@ -1087,7 +1101,12 @@ def evaluate_arima_models(
 
     # Generate full forecast
     full_forecast = fit_arima_stan(
-        full_data, p=p_best, d=d_best, q=q_best, forecast_horizon=30
+        full_data,
+        p=p_best,
+        d=d_best,
+        q=q_best,
+        forecast_horizon=30,
+        n_samples=n_samples,
     )
 
     # Debug forecast values
