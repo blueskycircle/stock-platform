@@ -1,5 +1,4 @@
 import matplotlib
-
 matplotlib.use("Agg")  # Set non-interactive backend before importing pyplot
 import click
 from library.data_ingestion import AlphaVantageIngestion
@@ -470,7 +469,7 @@ def forecast_arima(
                 )
                 plt.plot(
                     forecast_results.get("forecast_dates", []),
-                    forecast_results["forecast_mean"],
+                    forecast_results["mean"],
                     "r-",
                     label=f"ARIMA({best_p},{best_d},{best_q}) Forecast",
                 )
