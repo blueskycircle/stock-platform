@@ -254,7 +254,7 @@ python cli.py returns GOOG -s 2023-01-01 -p daily -o .output/google_returns.png
 
 The forecasting module provides tools for predicting future stock prices using ARIMA models. The `forecast-arima` command offers both single-model forecasting and model evaluation capabilities.
 
-![Forecasting Demo a](assets/forecasting-demo-a.gif)
+![Forecast Demo a](assets/forecast-demo-a.gif)
 
 ```cmd
 python cli.py forecast-arima SYMBOL [OPTIONS]
