@@ -2,6 +2,29 @@
 
 [![Python application test with Github Actions](https://github.com/blueskycircle/modelling-platform/actions/workflows/main.yml/badge.svg)](https://github.com/blueskycircle/modelling-platform/actions/workflows/main.yml)
 
+**Description:**
+
+The stock-platform project is a Python-based application designed for fetching, storing, analyzing, and visualizing stock market data. It provides a command-line interface (CLI) for easy interaction and supports various analytical tools to gain insights into stock performance. The platform leverages the Alpha Vantage API for data ingestion and a MySQL database for persistent storage. Key features include automated data updates, comprehensive data analysis, and customizable visualizations.
+
+## Table of Contents
+
+- [Data Ingestion](#data-ingestion)
+  - [Prerequisites](#prerequisites)
+  - [Configuration](#configuration)
+  - [Installation](#installation)
+  - [Usage](#usage)
+    - [Command Line Interface](#command-line-interface)
+    - [Options](#options)
+  - [Database Schema](#database-schema)
+  - [Features](#features)
+  - [Example Usage](#example-usage)
+  - [Error Handling](#error-handling)
+- [Data Analysis](#data-analysis)
+  - [List Available Symbols](#list-available-symbols)
+  - [Price History Chart](#price-history-chart)
+  - [Performance Dashboard](#performance-dashboard)
+  - [Returns Analysis](#returns-analysis)
+
 ## Data Ingestion
 
 The data ingestion module provides functionality to fetch and store financial market data from Alpha Vantage API into a MySQL database. It supports incremental updates and handles multiple stock symbols.
@@ -206,6 +229,8 @@ python cli.py returns SYMBOL [OPTIONS]
 - `-e, --end-date`: End date in YYYY-MM-DD format
 - `-p, --period`: Period for return calculation ["daily", "weekly", "monthly"] (default: "daily")
 - `-o, --output`: Output file path (default: "returns.png")
+
+Example:
 
 ![Data Analysis Demo d](assets/data-analysis-demo-d.gif)
 

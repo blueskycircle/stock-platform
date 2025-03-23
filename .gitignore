@@ -170,4 +170,6 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+# My special ignore list
 .output/
+.further_work.txt
