@@ -134,3 +134,81 @@ The system handles various error scenarios:
 - Rate limiting
 
 All errors are logged with appropriate messages for troubleshooting.
+
+## Data Analysis
+
+The data analysis module provides comprehensive tools for analyzing and visualizing stock market data. The analysis tools are accessible through the command line interface:
+
+### List Available Symbols
+
+![Data Analysis Demo a](assets/data-analysis-demo-a.gif)
+
+```cmd
+python cli.py list-symbols
+```
+
+### Price History Chart
+
+Generate a price history chart with moving averages:
+
+```cmd
+python cli.py price-history SYMBOL [OPTIONS]
+```
+
+Options:
+
+- `-s, --start-date`: Start date in YYYY-MM-DD format
+- `e, --end-date`: End date in YYYY-MM-DD format
+- `-o, --output`: Output file path (default: "price_history.png")
+- `--volume/--no-volume`: Include/exclude volume subplot (default: include)
+
+Example:
+
+![Data Analysis Demo b](assets/data-analysis-demo-b.gif)
+
+```cmd
+python cli.py price-history AAPL -s 2023-01-01 -e 2024-01-01 -o .output/apple_price.png
+```
+
+### Performance Dashboard
+
+Generate a comprehensive dashboard with price history, volume, daily returns, and key metrics:
+
+```cmd
+python cli.py dashboard SYMBOL [OPTIONS]
+```
+
+Options:
+
+- `-s, --start-date`: Start date in YYYY-MM-DD format
+- `e, --end-date`: End date in YYYY-MM-DD format
+- `-o, --output`: Output file path (default: "dashboard.png")
+
+Example:
+
+![Data Analysis Demo c](assets/data-analysis-demo-c.gif)
+
+```cmd
+python cli.py dashboard GOOG -s 2023-01-01 -o .output/goog.png
+```
+
+### Returns Analysis
+
+Analyze the distribution of stock returns:
+
+Options:
+
+```cmd
+python cli.py returns SYMBOL [OPTIONS]
+```
+
+- `-s, --start-date`: Start date in YYYY-MM-DD format
+- `-e, --end-date`: End date in YYYY-MM-DD format
+- `-p, --period`: Period for return calculation ["daily", "weekly", "monthly"] (default: "daily")
+- `-o, --output`: Output file path (default: "returns.png")
+
+![Data Analysis Demo d](assets/data-analysis-demo-d.gif)
+
+```cmd
+python cli.py returns GOOG -s 2023-01-01 -p daily -o .output/google_returns.png
+```
