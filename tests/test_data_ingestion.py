@@ -66,7 +66,7 @@ class TestAlphaVantageIngestion:
 
     def test_fetch_stock_data_success(
         self,
-        mock_engine, # pylint: disable=unused-argument
+        mock_engine,  # pylint: disable=unused-argument
         mock_requests,
         sample_stock_data,
     ):
@@ -98,7 +98,9 @@ class TestAlphaVantageIngestion:
         assert df["symbol"].iloc[0] == "AAPL"
         assert isinstance(df["date"].iloc[0], datetime)
 
-    def test_fetch_stock_data_api_error(self, mock_requests, mock_engine): # pylint: disable=unused-argument
+    def test_fetch_stock_data_api_error(
+        self, mock_requests, mock_engine
+    ):  # pylint: disable=unused-argument
         """Test API error handling"""
         mock_requests.side_effect = Exception("API Error")
 
@@ -106,7 +108,7 @@ class TestAlphaVantageIngestion:
         with pytest.raises(Exception, match="API Error"):
             ingestion.fetch_stock_data("AAPL")
 
-    def test_store_data_success(self, mock_engine): # pylint: disable=unused-argument
+    def test_store_data_success(self, mock_engine):  # pylint: disable=unused-argument
         """Test successful data storage"""
         data = {
             "date": [datetime(2024, 2, 24), datetime(2024, 2, 23)],
@@ -228,7 +230,11 @@ class TestAlphaVantageIngestion:
         ],
     )
     def test_fetch_stock_data_invalid_response(
-        self, mock_requests, invalid_data, expected_error, mock_engine # pylint: disable=unused-argument
+        self,
+        mock_requests,
+        invalid_data,
+        expected_error,
+        mock_engine,  # pylint: disable=unused-argument
     ):
         """Test handling of various invalid API responses"""
         mock_response = Mock()

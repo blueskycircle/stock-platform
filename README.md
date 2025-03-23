@@ -1,4 +1,4 @@
-# modelling-platform
+# stock-platform
 
 [![Python application test with Github Actions](https://github.com/blueskycircle/modelling-platform/actions/workflows/main.yml/badge.svg)](https://github.com/blueskycircle/modelling-platform/actions/workflows/main.yml)
 
