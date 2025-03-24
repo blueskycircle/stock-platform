@@ -25,17 +25,22 @@ The stock-platform project is a Python-based application designed for fetching, 
   - [Performance Dashboard](#performance-dashboard)
   - [Returns Analysis](#returns-analysis)
 - [Forecasting](#forecasting)
-  - [Single Model Forecasting](#single-model-forecasting)
-  - [Model Evaluation](#model-evaluation)
+  - [Arguments](#arguments)
+  - [Options](#options-1)
+  - [Detailed Explanation](#detailed-explanation)
+    - [Single Model Forecasting](#single-model-forecasting)
+    - [Model Evaluation](#model-evaluation)
   - [Examples](#examples)
-    - [Basic ARIMA Forecast with Default Settings](#1-basic-arima-forecast-with-default-settings)
-    - [Specify Different ARIMA Model Parameters](#2-specify-different-arima-model-parameters)
-    - [Custom Date Range](#3-custom-date-range)
-    - [Increase Forecast Period and Sample Size](#4-increase-forecast-period-and-sample-size)
-    - [Save Parameter Trace Plots](#5-save-parameter-trace-plots)
-    - [Evaluate Multiple ARIMA Models](#6-evaluate-multiple-arima-models)
-    - [Complete Example with Custom Naming](#7-complete-example-with-custom-naming)
-    - [Model Selection with Custom Settings](#8-model-selection-with-custom-settings)
+    - [1. Basic ARIMA Forecast with Default Settings](#1-basic-arima-forecast-with-default-settings)
+    - [2. Specify Different ARIMA Model Parameters](#2-specify-different-arima-model-parameters)
+    - [3. Custom Date Range](#3-custom-date-range)
+    - [4. Increase Forecast Period and Sample Size](#4-increase-forecast-period-and-sample-size)
+    - [5. Save Parameter Trace Plots](#5-save-parameter-trace-plots)
+    - [6. Evaluate Multiple ARIMA Models](#6-evaluate-multiple-arima-models)
+    - [7. Evaluate Custom Set of ARIMA Models](#7-evaluate-custom-set-of-arima-models)
+    - [8. Complete Example with Custom Naming](#8-complete-example-with-custom-naming)
+    - [9. Model Selection with Custom Settings](#9-model-selection-with-custom-settings)
+  - [Additional Notes](#additional-notes)
 
 ## Data Ingestion
 
@@ -278,6 +283,7 @@ python cli.py forecast-arima SYMBOL [OPTIONS]
 -   `-po, --params-output`: Output file path for parameter plots (default: "arima_params.png").
 -   `--save-results`: Flag to save forecast results to the database.
 -   `--evaluate / --no-evaluate`: Evaluate multiple ARIMA models to find the best fit (default: False).
+-   `--models, -m`: ARIMA models to evaluate, format: 'p,d,q;p,d,q' (e.g., '1,0,0;1,1,1;2,1,0').
 
 ### Detailed Explanation
 
@@ -289,7 +295,12 @@ When you specify the ARIMA parameters (`-p`, `-d`, `-q`), the command fits a sin
 
 #### Model Evaluation
 
-When you use the `--evaluate` option, the command tests a predefined set of ARIMA models, selects the best one based on a performance metric (e.g., RMSE), and generates a forecast using the best model.
+When you use the `--evaluate` option, the command tests multiple ARIMA models and selects the best one based on performance metrics. Model evaluation generates three plots:
+- Main forecast plot showing the best model's predictions
+- Metrics comparison plot showing RMSE and other metrics for each model
+- Forecast comparison plot showing predictions from all evaluated models
+
+You can specify which models to evaluate using the `--models` option, or the system will use a default set of models.
 
 ### Examples
 
@@ -359,11 +370,24 @@ python cli.py forecast-arima NFLX --evaluate
 
 This command:
 
-*   Tests multiple ARIMA configurations
+*   Tests multiple default ARIMA configurations
 *   Selects the best model based on error metrics
 *   Generates forecast using the winning model
+*   Produces comparison plots of all models tested
 
-#### 7. Complete Example with Custom Naming
+#### 7. Evaluate Custom Set of ARIMA Models
+
+```cmd
+python cli.py forecast-arima META --evaluate -m "1,0,0;0,1,1;2,1,1"
+```
+
+This command:
+
+*   Tests only the three specified ARIMA configurations
+*   Allows targeted evaluation of specific models
+*   Useful when you have prior knowledge about which models might work well
+
+#### 8. Complete Example with Custom Naming
 
 ```cmd
 python cli.py forecast-arima AAPL -p 1 -d 0 -q 1 -s 2023-01-01 -e 2024-03-01 -f 45 -n 2000 -o .output/appl_forecast.png --save-params -po .output/appl_params.png --save-results
@@ -379,10 +403,10 @@ This comprehensive example:
 *   Saves parameter plots as ".output/appl_params.png"
 *   Stores forecast results in the database
 
-#### 8. Model Selection with Custom Settings
+#### 9. Model Selection with Custom Settings
 
 ```cmd
-python cli.py forecast-arima NVDA --evaluate -s 2023-06-01 -o .output/nvidia_best_model.png
+python cli.py forecast-arima MSFT --evaluate -m "1,0,0;1,1,0" -s 2023-01-01 -o .output/microsoft_best_model.png
 ```
 
 This command evaluates models on more recent data and saves the best model forecast.

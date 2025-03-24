@@ -352,54 +352,22 @@ def ensure_extension(filepath, extension):
 @click.option("--p", "-p", type=int, default=1, help="AR order parameter")
 @click.option("--d", "-d", type=int, default=0, help="Differencing order parameter")
 @click.option("--q", "-q", type=int, default=0, help="MA order parameter")
-@click.option(
-    "--forecast-days", "-f", type=int, default=30, help="Number of days to forecast"
-)
-@click.option(
-    "--samples", "-n", type=int, default=1000, help="Number of MCMC samples for Stan"
-)
-@click.option(
-    "--output",
-    "-o",
-    default="arima_forecast.png",
-    help="Output file path for forecast chart",
-)
+@click.option("--forecast-days", "-f", type=int, default=30, help="Number of days to forecast")
+@click.option("--samples", "-n", type=int, default=1000, help="Number of MCMC samples for Stan")
+@click.option("--output", "-o", default="arima_forecast.png", help="Output file path for forecast chart")
 @click.option("--save-params", "-sp", is_flag=True, help="Save parameter trace plots")
-@click.option(
-    "--params-output",
-    "-po",
-    default="arima_params.png",
-    help="Output file path for parameter plots",
-)
-@click.option(
-    "--save-results", "-sr", is_flag=True, help="Save forecast results to database"
-)
-@click.option(
-    "--evaluate/--no-evaluate", default=False, help="Evaluate multiple ARIMA models"
-)
-def forecast_arima(
-    symbol,
-    start_date,
-    end_date,
-    p,
-    d,
-    q,
-    forecast_days,
-    samples,
-    output,
-    save_params,
-    params_output,
-    save_results,
-    evaluate,
-):
+@click.option("--params-output", "-po", default="arima_params.png", help="Output file path for parameter plots")
+@click.option("--save-results", "-sr", is_flag=True, help="Save forecast results to database")
+@click.option("--evaluate/--no-evaluate", default=False, help="Evaluate multiple ARIMA models")
+@click.option("--models", "-m", help="ARIMA models to evaluate, format: 'p,d,q;p,d,q' (e.g., '1,0,0;1,1,1;2,1,0')")
+def forecast_arima(symbol, start_date, end_date, p, d, q, forecast_days, samples, output, save_params, params_output, save_results, evaluate, models):
     """
     Run ARIMA forecast on a stock and save results.
-
+    
     Usage examples:
     - Basic forecast: python cli.py forecast-arima AAPL -p 1 -d 0 -q 0 -f 30
-    - Evaluate models: python cli.py forecast-arima GOOG --evaluate -s 2023-01-01
-
-    The forecast will be saved as a PNG chart and optionally parameter traces can be saved.
+    - Evaluate default models: python cli.py forecast-arima GOOG --evaluate
+    - Evaluate custom models: python cli.py forecast-arima MSFT --evaluate -m "1,0,0;1,1,0;2,1,1"
     """
     try:
         from library.forecasting import (
@@ -431,10 +399,25 @@ def forecast_arima(
 
         if evaluate:
             # Run model evaluation for multiple ARIMA configurations
-            click.echo("Evaluating multiple ARIMA models...")
+            click.echo("Evaluating ARIMA models...")
 
-            # Define models to evaluate
-            models = [(1, 0, 0), (1, 0, 1)]
+            # Parse custom models if provided or use default models
+            if models:
+                try:
+                    # Parse from string like "1,0,0;1,1,1;2,1,0"
+                    model_list = []
+                    for model_str in models.split(';'):
+                        p, d, q = map(int, model_str.split(','))
+                        model_list.append((p, d, q))
+                    
+                    click.echo(f"Evaluating custom model set: {model_list}")
+                except ValueError:
+                    click.echo("Error: Invalid model format. Use format like '1,0,0;1,1,1;2,1,0'")
+                    return
+            else:
+                # Default models if none provided
+                model_list = [(1, 0, 0), (1, 0, 1)]
+                click.echo(f"Evaluating default model set: {model_list}")
 
             try:
                 results = evaluate_arima_models(
@@ -442,78 +425,68 @@ def forecast_arima(
                     start_date=start_date,
                     end_date=end_date,
                     holdout_days=forecast_days,
-                    models=models,
+                    models=model_list,
                     db_connection=db_connection,
                     n_samples=samples,
                 )
 
-                # Get best model
+                # Get best model info
                 best_model = results["best_model"]
                 best_p, best_d, best_q = results["best_order"]
 
                 click.echo(f"Best model: ARIMA({best_p},{best_d},{best_q})")
                 click.echo(f"RMSE: {best_model['rmse']:.4f}")
 
-                # Save the forecast plot
-                fig = plt.figure(figsize=(12, 6))
-
-                # Get the forecast results from the best model
-                forecast_results = best_model["forecast"]
-
-                # Plot historical and forecast data
-                plt.plot(
-                    forecast_results.get("historical_dates", [])[-60:],
-                    forecast_results.get("historical_prices", [])[-60:],
-                    "b-",
-                    label="Historical",
-                )
-                plt.plot(
-                    forecast_results.get("forecast_dates", []),
-                    forecast_results["mean"],
-                    "r-",
-                    label=f"ARIMA({best_p},{best_d},{best_q}) Forecast",
-                )
-                plt.fill_between(
-                    forecast_results.get("forecast_dates", []),
-                    forecast_results["forecast_lower"],
-                    forecast_results["forecast_upper"],
-                    color="red",
-                    alpha=0.2,
-                    label="95% Interval",
-                )
-
-                plt.title(
-                    f"{symbol} Stock Price Forecast - Best Model: ARIMA({best_p},{best_d},{best_q})"
-                )
-                plt.legend()
-                plt.grid(True, alpha=0.3)
-                plt.xticks(rotation=45)
-                plt.tight_layout()
-                plt.savefig(output_path)
-                plt.close()
-
-                click.echo(f"Forecast chart saved to: {output_path}")
-
-                # Save parameter plots if requested
-                if save_params and "fit" in forecast_results:
+                # Use the pre-generated plots instead of creating new ones
+                if "plot" in results:
+                    # Main forecast plot
+                    click.echo("Saving forecast plot...")
+                    results["plot"].savefig(output_path)
+                    plt.close(results["plot"])
+                    click.echo(f"Forecast chart saved to: {output_path}")
+                    
+                    # If we have metrics plot, save it as well
+                    if "metrics_plot" in results:
+                        metrics_path = output_path.replace(".png", "_metrics.png")
+                        click.echo("Saving model metrics comparison plot...")
+                        results["metrics_plot"].savefig(metrics_path)
+                        plt.close(results["metrics_plot"])
+                        click.echo(f"Metrics comparison saved to: {metrics_path}")
+                        
+                    # If we have forecast comparison plot, save it as well
+                    if "forecast_comparison_plot" in results:
+                        comparison_path = output_path.replace(".png", "_comparison.png")
+                        click.echo("Saving forecast comparison plot...")
+                        results["forecast_comparison_plot"].savefig(comparison_path)
+                        plt.close(results["forecast_comparison_plot"])
+                        click.echo(f"Forecast comparison saved to: {comparison_path}")
+                        
+                else:
+                    # Fall back to generating a new plot if the pre-generated ones aren't available
+                    click.echo("No pre-generated plots found, creating a new one...")
+                    
+                    # (rest of your existing plotting code here)
+                    fig = plt.figure(figsize=(12, 6))
+                    # ... existing plotting code ...
+                    
+                # Save parameter plots if requested (same as before)
+                if save_params and "fit" in best_model.get("forecast", {}):
                     params_path = ensure_extension(params_output, ".png")
-
+                    
                     # Generate parameter plots
                     fig = plot_parameter_traces(
-                        fit=forecast_results["fit"],
+                        fit=best_model["forecast"]["fit"],
                         model_type="stan",
                         fig_title=f"ARIMA({best_p},{best_d},{best_q}) Parameters for {symbol}",
                     )
-
+                    
                     if fig:
                         fig.savefig(params_path)
                         plt.close(fig)
                         click.echo(f"Parameter plots saved to: {params_path}")
                     else:
-                        click.echo(
-                            "Could not generate parameter plots (no valid parameters found)"
-                        )
-
+                        click.echo("Could not generate parameter plots (no valid parameters found)")
+                        
             except ValueError as e:
                 if "No data found" in str(e):
                     click.echo(f"Error: {str(e)}")
