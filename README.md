@@ -261,6 +261,8 @@ The forecasting module provides tools for predicting future stock prices using A
 
 ![Forecast Demo a](assets/forecast-demo-a.gif)
 
+![Forecast Demo b](assets/forecast-demo-b.gif)
+
 ```cmd
 python cli.py forecast-arima SYMBOL [OPTIONS]
 ```
@@ -406,7 +408,7 @@ This comprehensive example:
 #### 9. Model Selection with Custom Settings
 
 ```cmd
-python cli.py forecast-arima MSFT --evaluate -m "1,0,0;1,1,0" -s 2023-01-01 -o .output/microsoft_best_model.png
+python cli.py forecast-arima MSFT --evaluate -m "1,0,0;1,1,0;1,0,1" -s 2023-01-01 -o .output/microsoft_best_model.png
 ```
 
 This command evaluates models on more recent data and saves the best model forecast.

@@ -1,4 +1,5 @@
 import matplotlib
+
 matplotlib.use("Agg")  # Set non-interactive backend before importing pyplot
 import click
 from library.data_ingestion import AlphaVantageIngestion
@@ -352,18 +353,55 @@ def ensure_extension(filepath, extension):
 @click.option("--p", "-p", type=int, default=1, help="AR order parameter")
 @click.option("--d", "-d", type=int, default=0, help="Differencing order parameter")
 @click.option("--q", "-q", type=int, default=0, help="MA order parameter")
-@click.option("--forecast-days", "-f", type=int, default=30, help="Number of days to forecast")
-@click.option("--samples", "-n", type=int, default=1000, help="Number of MCMC samples for Stan")
-@click.option("--output", "-o", default="arima_forecast.png", help="Output file path for forecast chart")
+@click.option(
+    "--forecast-days", "-f", type=int, default=30, help="Number of days to forecast"
+)
+@click.option(
+    "--samples", "-n", type=int, default=1000, help="Number of MCMC samples for Stan"
+)
+@click.option(
+    "--output",
+    "-o",
+    default="arima_forecast.png",
+    help="Output file path for forecast chart",
+)
 @click.option("--save-params", "-sp", is_flag=True, help="Save parameter trace plots")
-@click.option("--params-output", "-po", default="arima_params.png", help="Output file path for parameter plots")
-@click.option("--save-results", "-sr", is_flag=True, help="Save forecast results to database")
-@click.option("--evaluate/--no-evaluate", default=False, help="Evaluate multiple ARIMA models")
-@click.option("--models", "-m", help="ARIMA models to evaluate, format: 'p,d,q;p,d,q' (e.g., '1,0,0;1,1,1;2,1,0')")
-def forecast_arima(symbol, start_date, end_date, p, d, q, forecast_days, samples, output, save_params, params_output, save_results, evaluate, models):
+@click.option(
+    "--params-output",
+    "-po",
+    default="arima_params.png",
+    help="Output file path for parameter plots",
+)
+@click.option(
+    "--save-results", "-sr", is_flag=True, help="Save forecast results to database"
+)
+@click.option(
+    "--evaluate/--no-evaluate", default=False, help="Evaluate multiple ARIMA models"
+)
+@click.option(
+    "--models",
+    "-m",
+    help="ARIMA models to evaluate, format: 'p,d,q;p,d,q' (e.g., '1,0,0;1,1,1;2,1,0')",
+)
+def forecast_arima(
+    symbol,
+    start_date,
+    end_date,
+    p,
+    d,
+    q,
+    forecast_days,
+    samples,
+    output,
+    save_params,
+    params_output,
+    save_results,
+    evaluate,
+    models,
+):
     """
     Run ARIMA forecast on a stock and save results.
-    
+
     Usage examples:
     - Basic forecast: python cli.py forecast-arima AAPL -p 1 -d 0 -q 0 -f 30
     - Evaluate default models: python cli.py forecast-arima GOOG --evaluate
@@ -406,13 +444,15 @@ def forecast_arima(symbol, start_date, end_date, p, d, q, forecast_days, samples
                 try:
                     # Parse from string like "1,0,0;1,1,1;2,1,0"
                     model_list = []
-                    for model_str in models.split(';'):
-                        p, d, q = map(int, model_str.split(','))
+                    for model_str in models.split(";"):
+                        p, d, q = map(int, model_str.split(","))
                         model_list.append((p, d, q))
-                    
+
                     click.echo(f"Evaluating custom model set: {model_list}")
                 except ValueError:
-                    click.echo("Error: Invalid model format. Use format like '1,0,0;1,1,1;2,1,0'")
+                    click.echo(
+                        "Error: Invalid model format. Use format like '1,0,0;1,1,1;2,1,0'"
+                    )
                     return
             else:
                 # Default models if none provided
@@ -444,7 +484,7 @@ def forecast_arima(symbol, start_date, end_date, p, d, q, forecast_days, samples
                     results["plot"].savefig(output_path)
                     plt.close(results["plot"])
                     click.echo(f"Forecast chart saved to: {output_path}")
-                    
+
                     # If we have metrics plot, save it as well
                     if "metrics_plot" in results:
                         metrics_path = output_path.replace(".png", "_metrics.png")
@@ -452,7 +492,7 @@ def forecast_arima(symbol, start_date, end_date, p, d, q, forecast_days, samples
                         results["metrics_plot"].savefig(metrics_path)
                         plt.close(results["metrics_plot"])
                         click.echo(f"Metrics comparison saved to: {metrics_path}")
-                        
+
                     # If we have forecast comparison plot, save it as well
                     if "forecast_comparison_plot" in results:
                         comparison_path = output_path.replace(".png", "_comparison.png")
@@ -460,33 +500,35 @@ def forecast_arima(symbol, start_date, end_date, p, d, q, forecast_days, samples
                         results["forecast_comparison_plot"].savefig(comparison_path)
                         plt.close(results["forecast_comparison_plot"])
                         click.echo(f"Forecast comparison saved to: {comparison_path}")
-                        
+
                 else:
                     # Fall back to generating a new plot if the pre-generated ones aren't available
                     click.echo("No pre-generated plots found, creating a new one...")
-                    
+
                     # (rest of your existing plotting code here)
                     fig = plt.figure(figsize=(12, 6))
                     # ... existing plotting code ...
-                    
+
                 # Save parameter plots if requested (same as before)
                 if save_params and "fit" in best_model.get("forecast", {}):
                     params_path = ensure_extension(params_output, ".png")
-                    
+
                     # Generate parameter plots
                     fig = plot_parameter_traces(
                         fit=best_model["forecast"]["fit"],
                         model_type="stan",
                         fig_title=f"ARIMA({best_p},{best_d},{best_q}) Parameters for {symbol}",
                     )
-                    
+
                     if fig:
                         fig.savefig(params_path)
                         plt.close(fig)
                         click.echo(f"Parameter plots saved to: {params_path}")
                     else:
-                        click.echo("Could not generate parameter plots (no valid parameters found)")
-                        
+                        click.echo(
+                            "Could not generate parameter plots (no valid parameters found)"
+                        )
+
             except ValueError as e:
                 if "No data found" in str(e):
                     click.echo(f"Error: {str(e)}")
