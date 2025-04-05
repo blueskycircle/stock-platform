@@ -4,7 +4,7 @@
 
 **Description:**
 
-The stock-platform project is a Python-based application designed for fetching, storing, analyzing, and visualizing stock market data. It provides a command-line interface (CLI) for easy interaction and supports various analytical tools to gain insights into stock performance. The platform leverages the Alpha Vantage API for data ingestion and a MySQL database for persistent storage. Key features include automated data updates, comprehensive data analysis, and customizable visualizations.
+A Python-based application designed for fetching, storing, analyzing, and visualizing stock market data. It provides a command-line interface (CLI) for easy interaction and supports various analytical tools to gain insights into stock performance. The platform leverages the Alpha Vantage API for data ingestion and a MySQL database for persistent storage. Key features include automated data updates, comprehensive data analysis, and customizable visualizations.
 
 ## Table of Contents
 
